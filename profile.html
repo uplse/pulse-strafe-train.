@@ -156,35 +156,50 @@
         let tempAudioBase64 = null, tempAudioName = "";
         let tempVideoBase64 = null;
 
-        window.addEventListener('DOMContentLoaded', async () => {
+window.addEventListener('DOMContentLoaded', async () => {
+            // 1. Mise à jour des liens
             document.getElementById('nav-home').href = `game.html${token ? '#access_token='+token : ''}`;
             document.getElementById('nav-leaderboard').href = `leaderboard.html${token ? '#access_token='+token : ''}`;
             document.getElementById('nav-settings').href = `settings.html${token ? '#access_token='+token : ''}`;
             document.getElementById('nav-profile').href = token ? `profile.html?id=me#access_token=${token}` : 'index.html';
 
+            // 2. Récupérer mon ID si connecté
             if (token) {
                 const res = await fetch('https://discord.com/api/users/@me', { headers: { Authorization: `Bearer ${token}` } });
                 if (res.ok) {
                     const user = await res.json(); 
                     myId = user.id;
-                    if (!targetId || targetId === "me") {
+                    // Redirection si on demande "me"
+                    if (targetId === "me") {
                         window.location.href = `profile.html?id=${myId}#access_token=${token}`;
                         return;
                     }
                 }
             }
 
+            // 3. LOGIQUE DE CHARGEMENT CORRIGÉE
             if (!targetId) {
-                document.getElementById('user-name').textContent = "Profil non spécifié";
+                document.getElementById('user-name').textContent = "Profil non trouvé";
                 return;
             }
 
-            const { data, error } = await supabase.from('user_profiles').select('*').eq('id', String(targetId)).single();
-            if (data) {
+            console.log("Tentative de chargement du profil ID:", targetId);
+
+            // On s'assure que l'ID est bien une chaîne de caractères
+            const { data, error } = await supabase
+                .from('user_profiles')
+                .select('*')
+                .eq('id', String(targetId))
+                .single();
+
+            if (error) {
+                console.error("Erreur Supabase:", error);
+                document.getElementById('user-name').textContent = "Erreur de chargement";
+            } else if (data) {
                 profileData = data;
-                displayProfile();
+                displayProfile(); // Appel de la fonction qui affiche tout
             } else {
-                document.getElementById('user-name').textContent = "Profil introuvable";
+                document.getElementById('user-name').textContent = "Utilisateur inconnu";
             }
         });
 
