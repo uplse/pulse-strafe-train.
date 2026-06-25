@@ -179,7 +179,7 @@
                 return;
             }
 
-            const { data, error } = await supabase.from('user_profiles').select('*').eq('id', targetId).single();
+            const { data, error } = await supabase.from('user_profiles').select('*').eq('id', String(targetId)).single();
             if (data) {
                 profileData = data;
                 displayProfile();
