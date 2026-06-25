@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paramètres - Pulse Strafe</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-color: #06070d;
+            --card-bg: rgba(13, 16, 29, 0.4);
+            --border-color: rgba(255, 255, 255, 0.05);
+            --accent-color: #00f0ff;
+            --primary-color: #3b82f6;
+            --text-color: #f1f5f9;
+        }
+        * { box-sizing: border-box; }
+        body { background-color: var(--bg-color); color: var(--text-color); font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; display: flex; min-height: 100vh; }
+        .sidebar { width: 85px; background: rgba(10, 12, 22, 0.9); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; align-items: center; padding: 25px 0; backdrop-filter: blur(10px); flex-shrink: 0; }
+        .logo-area { font-size: 24px; color: var(--accent-color); margin-bottom: 50px; text-shadow: 0 0 15px var(--accent-color); }
+        .nav-links { display: flex; flex-direction: column; gap: 25px; width: 100%; align-items: center; }
+        .nav-item { width: 45px; height: 45px; display: flex; align-items: center; justify-content: center; border-radius: 12px; color: #64748b; text-decoration: none; font-size: 18px; transition: all 0.3s ease; }
+        .nav-item:hover, .nav-item.active { color: var(--accent-color); background: rgba(0, 240, 255, 0.05); border: 1px solid rgba(0, 240, 255, 0.15); }
+        .page-content { flex-grow: 1; padding: 40px; display: flex; justify-content: center; align-items: center; }
+        .settings-card { background: var(--card-bg); border: 1px solid var(--border-color); max-width: 600px; width: 100%; border-radius: 24px; padding: 40px; box-shadow: 0 20px 50px rgba(0,0,0,0.4); backdrop-filter: blur(10px); }
+        h2 { font-size: 22px; font-weight: 800; margin-top: 0; margin-bottom: 30px; display: flex; align-items: center; gap: 10px; }
+        .section-title { font-size: 12px; font-weight: 700; color: var(--accent-color); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 15px; margin-top: 25px; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; font-size: 13px; color: #94a3b8; margin-bottom: 8px; }
+        .theme-pickers { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .color-input-wrapper { background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); padding: 10px; border-radius: 12px; display: flex; align-items: center; gap: 12px; }
+        .color-picker { border: none; width: 35px; height: 35px; border-radius: 8px; cursor: pointer; background: transparent; }
+        .btn-save { background: var(--accent-color); color: #06070d; border: none; width: 100%; padding: 14px; border-radius: 12px; font-weight: 700; font-size: 14px; cursor: pointer; margin-top: 30px; transition: 0.2s; text-transform: uppercase; }
+        .btn-save:hover { transform: scale(1.01); box-shadow: 0 0 15px rgba(0,240,255,0.3); }
+        .select-input { width: 100%; background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); color: white; padding: 12px; border-radius: 12px; outline: none; }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <div class="logo-area"><i class="fa-solid fa-bolt"></i></div>
+        <div class="nav-links">
+            <a id="nav-home" href="game.html" class="nav-item"><i class="fa-solid fa-house"></i></a>
+            <a id="nav-leaderboard" href="leaderboard.html" class="nav-item"><i class="fa-solid fa-trophy"></i></a>
+            <a id="nav-profile" href="profile.html" class="nav-item"><i class="fa-solid fa-user"></i></a>
+            <a id="nav-settings" href="#" class="nav-item active"><i class="fa-solid fa-gear"></i></a>
+        </div>
+    </div>
+
+    <div class="page-content">
+        <div class="settings-card">
+            <h2><i class="fa-solid fa-sliders"></i> Paramètres du Compte</h2>
+            <div class="section-title">Configuration Gameplay</div>
+            <div class="form-group">
+                <label for="game-pattern">Type de Pattern rythmique</label>
+                <select id="game-pattern" class="select-input">
+                    <option value="default">Standard</option>
+                    <option value="hardcore">Hardcore (Vitesse +)</option>
+                    <option value="random">Aléatoire total</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="game-duration">Durée d'une partie (en secondes)</label>
+                <select id="game-duration" class="select-input">
+                    <option value="30">30 secondes</option>
+                    <option value="60">60 secondes</option>
+                    <option value="120">120 secondes</option>
+                </select>
+            </div>
+
+            <div class="section-title">Personnalisation du Thème</div>
+            <div class="theme-pickers">
+                <div class="form-group">
+                    <label>Couleur d'accentuation</label>
+                    <div class="color-input-wrapper">
+                        <input type="color" id="picker-accent" class="color-picker" value="#00f0ff">
+                        <span id="txt-accent">#00f0ff</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Couleur des boutons</label>
+                    <div class="color-input-wrapper">
+                        <input type="color" id="picker-primary" class="color-picker" value="#3b82f6">
+                        <span id="txt-primary">#3b82f6</span>
+                    </div>
+                </div>
+            </div>
+
+            <button id="btn-save-settings" class="btn-save">Sauvegarder les modifications</button>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = "https://gdhbpreipbdipvzlhigw.supabase.co";
+        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkaGJwcmVpcGJkaXB2emxoaWd3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyNDc4NjQsImV4cCI6MjA5NzgyMzg2NH0.udKJGkdR5sATP7NavFCZuiYZgyfAp8umsyNvkSCVEdg";
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        let myId = "";
+        
+        function getAccessToken() {
+            const hashParams = new URLSearchParams(window.location.hash.substring(1));
+            return hashParams.get('access_token') || new URLSearchParams(window.location.search).get('access_token');
+        }
+
+        const token = getAccessToken();
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            document.getElementById('nav-home').href = `game.html${token ? '#access_token='+token : ''}`;
+            document.getElementById('nav-leaderboard').href = `leaderboard.html${token ? '#access_token='+token : ''}`;
+            document.getElementById('nav-profile').href = token ? `profile.html?id=me&access_token=${token}` : 'index.html';
+
+            const savedConfig = localStorage.getItem('pulse_game_config');
+            if (savedConfig) {
+                const parsed = JSON.parse(savedConfig);
+                if (parsed.pattern) document.getElementById('game-pattern').value = parsed.pattern;
+                if (parsed.duration) document.getElementById('game-duration').value = parsed.duration;
+            }
+
+            if (token) {
+                const res = await fetch('https://discord.com/api/users/@me', { headers: { Authorization: `Bearer ${token}` } });
+                if (res.ok) {
+                    const user = await res.json();
+                    myId = user.id;
+                    const { data } = await supabase.from('user_profiles').select('user_theme').eq('id', myId).single();
+                    if (data?.user_theme) {
+                        if (data.user_theme['accent-color']) {
+                            document.getElementById('picker-accent').value = data.user_theme['accent-color'];
+                            document.getElementById('txt-accent').textContent = data.user_theme['accent-color'];
+                            document.documentElement.style.setProperty('--accent-color', data.user_theme['accent-color']);
+                        }
+                        if (data.user_theme['primary-color']) {
+                            document.getElementById('picker-primary').value = data.user_theme['primary-color'];
+                            document.getElementById('txt-primary').textContent = data.user_theme['primary-color'];
+                            document.documentElement.style.setProperty('--primary-color', data.user_theme['primary-color']);
+                        }
+                    }
+                }
+            }
+        });
+
+        document.getElementById('picker-accent').addEventListener('input', (e) => {
+            document.getElementById('txt-accent').textContent = e.target.value;
+            document.documentElement.style.setProperty('--accent-color', e.target.value);
+        });
+        document.getElementById('picker-primary').addEventListener('input', (e) => {
+            document.getElementById('txt-primary').textContent = e.target.value;
+            document.documentElement.style.setProperty('--primary-color', e.target.value);
+        });
+
+        document.getElementById('btn-save-settings').addEventListener('click', async (e) => {
+            const btn = e.target;
+            const originalText = btn.textContent;
+            
+            const pattern = document.getElementById('game-pattern').value;
+            const duration = document.getElementById('game-duration').value;
+            const themeObject = {
+                "accent-color": document.getElementById('picker-accent').value,
+                "primary-color": document.getElementById('picker-primary').value
+            };
+
+            localStorage.setItem('pulse_game_config', JSON.stringify({ pattern, duration }));
+
+            if (myId) {
+                btn.textContent = "Sauvegarde en cours...";
+                const { error } = await supabase.from('user_profiles').update({ user_theme: themeObject }).eq('id', myId);
+                btn.textContent = originalText;
+                
+                if (!error) alert("Configuration enregistrée sur le cloud !");
+                else alert("Erreur : " + error.message);
+            } else {
+                alert("Configurations sauvegardées localement. Connectez-vous pour synchroniser avec le cloud.");
+            }
+        });
+    </script>
+</body>
+</html>

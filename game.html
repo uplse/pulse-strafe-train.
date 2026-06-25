@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Entraînement - Pulse Strafe</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; }
+        :root {
+            --bg-color: #06070d; 
+            --card-bg: rgba(13, 16, 29, 0.6);
+            --border-color: rgba(255, 255, 255, 0.05); 
+            --primary-color: #3b82f6;
+            --accent-color: #00f0ff; 
+            --text-color: #f1f5f9;
+        }
+        body { background-color: var(--bg-color); color: var(--text-color); font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; display: flex; min-height: 100vh; overflow-x: hidden; }
+        
+        .sidebar { width: 85px; background: rgba(10, 12, 22, 0.9); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; align-items: center; padding: 25px 0; z-index: 100; backdrop-filter: blur(10px); flex-shrink: 0; }
+        .logo-area { font-size: 24px; color: var(--accent-color); margin-bottom: 50px; text-shadow: 0 0 15px var(--accent-color); }
+        .nav-links { display: flex; flex-direction: column; gap: 25px; width: 100%; align-items: center; }
+        .nav-item { width: 45px; height: 45px; display: flex; align-items: center; justify-content: center; border-radius: 12px; color: #64748b; text-decoration: none; font-size: 18px; transition: all 0.3s ease; border: 1px solid transparent; }
+        .nav-item:hover, .nav-item.active { color: var(--accent-color); background: rgba(0, 240, 255, 0.05); border: 1px solid rgba(0, 240, 255, 0.15); box-shadow: 0 0 15px rgba(0, 240, 255, 0.1); }
+
+        .page-content { flex-grow: 1; padding: 40px; display: flex; flex-direction: column; height: 100vh; overflow-y: auto; align-items: center; }
+        
+        .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; gap: 15px; width: 100%; max-width: 700px; }
+        .search-container { position: relative; width: 220px; }
+        .search-input { width: 100%; background: var(--card-bg); border: 1px solid var(--border-color); color: white; padding: 10px 14px; border-radius: 14px; outline: none; transition: 0.3s; font-size: 13px; }
+        .search-results { position: absolute; top: 110%; left: 0; right: 0; background: #0d101d; border: 1px solid var(--border-color); border-radius: 10px; z-index: 99; display: none; max-height: 200px; overflow-y: auto; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        .search-item { padding: 10px 15px; cursor: pointer; font-size: 13px; transition: 0.2s; color: white; display: flex; align-items: center; gap: 8px; }
+        .search-item:hover { background: rgba(0, 240, 255, 0.08); color: var(--accent-color); }
+        
+        .quick-selectors { display: flex; gap: 8px; }
+        .quick-select { background: var(--card-bg); border: 1px solid var(--border-color); color: white; padding: 8px 12px; border-radius: 12px; font-size: 12px; outline: none; cursor: pointer; }
+        .quick-select:focus { border-color: var(--accent-color); }
+
+        .user-pill { background: var(--card-bg); border: 1px solid var(--border-color); padding: 10px 18px; border-radius: 30px; font-weight: 700; font-size: 13px; color: var(--accent-color); cursor: pointer; }
+
+        .panel { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 20px; padding: 30px; backdrop-filter: blur(12px); box-shadow: 0 10px 30px rgba(0,0,0,0.3); width: 100%; max-width: 700px; position: relative; }
+        .card-title { font-size: 13px; font-weight: 700; color: #64748b; margin: 0 0 20px 0; text-transform: uppercase; letter-spacing: 0.5px; }
+        
+        .display-screen { background: #020306; border: 2px solid var(--border-color); border-radius: 16px; height: 280px; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; margin-bottom: 25px; transition: 0.08s ease; }
+        .shift-indicator { position: absolute; top: 15px; font-size: 11px; font-weight: bold; background: #ef4444; color: white; padding: 4px 12px; border-radius: 6px; text-transform: uppercase; }
+        .shift-indicator.active { background: #10b981; box-shadow: 0 0 10px rgba(16,185,129,0.3); }
+        
+        .key-view { font-size: 104px; font-weight: 900; color: #ffffff; }
+        .preview-sequence { font-size: 18px; letter-spacing: 6px; color: #475569; text-transform: uppercase; font-weight: 700; margin-top: 15px; }
+        .preview-sequence span.current { color: var(--accent-color); border-bottom: 2px solid var(--accent-color); text-shadow: 0 0 10px var(--accent-color); }
+        
+        .display-screen.success { border-color: #10b981; background: rgba(16, 185, 129, 0.05); }
+        .display-screen.error { border-color: #ef4444; background: rgba(239, 68, 68, 0.05); }
+
+        .dashboard-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 25px; }
+        .stat-card { background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); padding: 15px; border-radius: 12px; text-align: center; }
+        .stat-num { font-size: 26px; font-weight: 800; color: white; }
+        .stat-name { font-size: 11px; color: #64748b; text-transform: uppercase; margin-top: 5px; }
+        
+        .action-btn { width: 100%; padding: 16px; border: none; border-radius: 12px; font-size: 15px; font-weight: 700; text-transform: uppercase; cursor: pointer; transition: 0.3s; background: linear-gradient(135deg, var(--primary-color), #1d4ed8); color: white; }
+        .action-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(59, 130, 246, 0.3); }
+        .action-btn.running { background: linear-gradient(135deg, #ef4444, #b91c1c); box-shadow: 0 5px 15px rgba(239, 68, 68, 0.2); }
+        .action-btn.running:hover { box-shadow: 0 5px 20px rgba(239, 68, 68, 0.4); }
+
+        .embedded-notification { background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.3); color: #93c5fd; padding: 15px; border-radius: 12px; margin-top: 15px; display: none; text-align: center; font-weight: 600; font-size: 14px; animation: fadeIn 0.3s ease; }
+        .embedded-notification.stopped { background: rgba(234, 179, 8, 0.1); border-color: rgba(234, 179, 8, 0.3); color: #fef08a; }
+        
+        .challenge-box { background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 12px; padding: 15px; margin-top: 15px; display: none; align-items: center; justify-content: space-between; }
+        .btn-accept { background: #10b981; border: none; color: white; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        #active-duel-status { font-size: 13px; color: #eab308; text-align: center; font-weight: bold; margin-top: 10px; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <div class="logo-area"><i class="fa-solid fa-bolt"></i></div>
+        <div class="nav-links">
+            <a id="nav-link-game" href="game.html" class="nav-item active"><i class="fa-solid fa-house"></i></a>
+            <a id="nav-link-leaderboard" href="leaderboard.html" class="nav-item"><i class="fa-solid fa-trophy"></i></a>
+            <a id="nav-link-profile" href="#" class="nav-item"><i class="fa-solid fa-user"></i></a>
+            <a id="nav-link-settings" href="settings.html" class="nav-item"><i class="fa-solid fa-gear"></i></a>
+        </div>
+    </div>
+
+    <div class="page-content">
+        <div class="top-bar">
+            <!-- BARRE DE RECHERCHE OPTIMISÉE (Max 3 suggestions correspondantes) -->
+            <div class="search-container">
+                <input type="text" id="search-player" class="search-input" placeholder="Chercher un joueur...">
+                <div id="search-results" class="search-results"></div>
+            </div>
+
+            <div class="quick-selectors">
+                <select id="quick-pattern" class="quick-select">
+                    <option value="btp">BTP (D S Q D D)</option>
+                    <option value="zqsd">Standard (Z Q S D)</option>
+                    <option value="zdsq">Custom (Z D S Q)</option>
+                    <option value="qd">Fast QD (Q D)</option>
+                </select>
+                <select id="quick-duration" class="quick-select">
+                    <option value="15">15s</option>
+                    <option value="30">30s</option>
+                </select>
+            </div>
+
+            <div id="user-pill" class="user-pill">Mode Invité</div>
+        </div>
+
+        <div class="panel">
+            <div class="card-title" id="game-mode-title">Zone d'entraînement</div>
+            <div id="exercise-screen" class="display-screen">
+                <div id="shift-indicator" class="shift-indicator">SHIFT ABSENT</div>
+                <div id="key-big" class="key-view">-</div>
+                <div id="seq-preview" class="preview-sequence">En attente...</div>
+            </div>
+            
+            <div class="dashboard-stats">
+                <div class="stat-card"><div id="stat-hits" class="stat-num">0</div><div class="stat-name">Touches</div></div>
+                <div class="stat-card"><div id="stat-acc" class="stat-num">100%</div><div class="stat-name">Précision</div></div>
+                <div class="stat-card"><div id="stat-time" class="stat-num">30s</div><div class="stat-name">Temps</div></div>
+            </div>
+            
+            <!-- BOUTON AVEC ETAT DYNAMIQUE (Lancer / Arrêter) -->
+            <button id="btn-session-trigger" class="action-btn">Lancer la Session</button>
+            
+            <div id="embedded-alert" class="embedded-notification"></div>
+            <div id="active-duel-status"></div>
+            
+            <div id="match-invite-box" class="challenge-box">
+                <span id="challenge-msg" style="font-size:13px; font-weight: 600;">Défi 1v1 reçu !</span>
+                <button id="btn-challenge-ok" class="btn-accept">Accepter</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = "https://gdhbpreipbdipvzlhigw.supabase.co";
+        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkaGJwcmVpcGJkaXB2emxoaWd3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyNDc4NjQsImV4cCI6MjA5NzgyMzg2NH0.udKJGkdR5sATP7NavFCZuiYZgyfAp8umsyNvkSCVEdg";
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        let myId = "", myName = "", token = "";
+        let activeBind = 'shift', isBindActive = false;
+        let selectedPattern = 'btp', selectedDuration = 30;
+
+        function loadConfigurations() {
+            const savedConfig = localStorage.getItem('pulse_game_config');
+            if (savedConfig) {
+                const config = JSON.parse(savedConfig);
+                activeBind = config.bind || 'shift';
+                selectedPattern = config.pattern || 'btp';
+                selectedDuration = parseInt(config.duration || '30');
+                if(config.theme) {
+                    Object.entries(config.theme).forEach(([k, v]) => { document.documentElement.style.setProperty(`--${k}`, v); });
+                }
+            }
+            document.getElementById('quick-pattern').value = selectedPattern;
+            document.getElementById('quick-duration').value = selectedDuration;
+            updateDisplayMeta();
+        }
+
+        function updateDisplayMeta() {
+            document.getElementById('shift-indicator').textContent = `${activeBind.toUpperCase()} ABSENT`;
+            document.getElementById('game-mode-title').textContent = `Zone d'entraînement (${selectedPattern.toUpperCase()} - ${selectedDuration}s)`;
+            document.getElementById('stat-time').textContent = selectedDuration + 's';
+        }
+
+        document.getElementById('quick-pattern').addEventListener('change', (e) => { selectedPattern = e.target.value; saveQuickConfig(); updateDisplayMeta(); });
+        document.getElementById('quick-duration').addEventListener('change', (e) => { selectedDuration = parseInt(e.target.value); saveQuickConfig(); updateDisplayMeta(); });
+
+        function saveQuickConfig() {
+            let config = JSON.parse(localStorage.getItem('pulse_game_config')) || {};
+            config.pattern = selectedPattern;
+            config.duration = selectedDuration.toString();
+            localStorage.setItem('pulse_game_config', JSON.stringify(config));
+        }
+
+        window.addEventListener('keydown', (e) => { 
+            if (e.key.toLowerCase() === activeBind.toLowerCase()) {
+                isBindActive = true;
+                const ind = document.getElementById('shift-indicator');
+                ind.textContent = `${activeBind.toUpperCase()} ACTIF`;
+                ind.classList.add('active');
+            }
+        });
+        window.addEventListener('keyup', (e) => { 
+            if (e.key.toLowerCase() === activeBind.toLowerCase()) {
+                isBindActive = false;
+                const ind = document.getElementById('shift-indicator');
+                ind.textContent = `${activeBind.toUpperCase()} ABSENT`;
+                ind.classList.remove('active');
+            }
+        });
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            loadConfigurations();
+            
+            const hashParams = new URLSearchParams(window.location.hash.slice(1));
+            const queryParams = new URLSearchParams(window.location.search);
+            token = hashParams.get('access_token') || queryParams.get('access_token');
+
+            document.getElementById('nav-link-game').href = `game.html${token ? '?access_token='+token : ''}`;
+            document.getElementById('nav-link-leaderboard').href = `leaderboard.html${token ? '?access_token='+token : ''}`;
+            document.getElementById('nav-link-settings').href = `settings.html${token ? '?access_token='+token : ''}`;
+            document.getElementById('nav-link-profile').href = token ? '#' : 'index.html';
+
+            if (token) {
+                const res = await fetch('https://discord.com/api/users/@me', { headers: { Authorization: `Bearer ${token}` } });
+                if (res.ok) {
+                    const user = await res.json(); myId = user.id; myName = user.username;
+                    document.getElementById('user-pill').textContent = myName;
+                    
+                    document.getElementById('nav-link-profile').href = `profile.html?id=${myId}&access_token=${token}`;
+                    document.getElementById('user-pill').onclick = () => { window.location.href = `profile.html?id=${myId}&access_token=${token}`; };
+                    
+                    let userAvatar = user.avatar ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png` : "https://cdn.discordapp.com/embed/avatars/0.png";
+                    await supabaseClient.from('user_profiles').upsert([{ id: myId, username: myName, avatar_url: userAvatar }], { onConflict: 'id' });
+                    listenToChallenges();
+                }
+            } else {
+                document.getElementById('user-pill').onclick = () => { window.location.href = 'index.html'; };
+            }
+
+            setupSearch();
+        });
+
+        // RECHERCHE SUGGESTIONS - MAX 3 CORRESPONDANCES + REDIRECTION
+        function setupSearch() {
+            const input = document.getElementById('search-player'), results = document.getElementById('search-results');
+            input.addEventListener('input', async () => {
+                const query = input.value.trim();
+                if (query.length < 1) { results.style.display = "none"; return; }
+                
+                // Recherche les correspondances n'importe où dans le pseudo, max 3 profils
+                const { data } = await supabaseClient.from('user_profiles')
+                    .select('id, username')
+                    .ilike('username', `%${query}%`)
+                    .limit(3);
+
+                if (data && data.length > 0) {
+                    results.innerHTML = data.map(u => {
+                        const targetUrl = `profile.html?id=${u.id}${token ? '&access_token='+token : ''}`;
+                        return `<div class="search-item" onclick="window.location.href='${targetUrl}'"><i class="fa-solid fa-user" style="font-size:11px; color:var(--accent-color);"></i> ${u.username}</div>`;
+                    }).join('');
+                    results.style.display = "block";
+                } else { 
+                    results.style.display = "none"; 
+                }
+            });
+            document.addEventListener('click', (e) => { if (e.target !== input) results.style.display = "none"; });
+        }
+
+        const patterns = { btp: ['d','s','q','d','d'], zqsd: ['z','q','s','d'], zdsq: ['z','d','s','q'], qd: ['q','d'] };
+        let currentPattern = [], idx = 0, score = 0, total = 0, isPlaying = false, timer = 30, interval = null, currentMatchId = null;
+
+        // GESTION DU BOUTON (Lancement ou Arrêt Forcé)
+        document.getElementById('btn-session-trigger').addEventListener('click', () => {
+            if(isPlaying) { 
+                // FONCTIONNALITÉ DEMANDÉE : Interrompre la phase en cours
+                endSession(true); 
+                return; 
+            } 
+            
+            isPlaying = true; score = 0; total = 0; idx = 0;
+            currentPattern = patterns[selectedPattern] || patterns['btp'];
+            timer = selectedDuration;
+            
+            document.getElementById('embedded-alert').style.display = 'none';
+            const triggerBtn = document.getElementById('btn-session-trigger');
+            triggerBtn.textContent = "Arrêter la Session";
+            triggerBtn.classList.add('running');
+            
+            document.getElementById('stat-hits').textContent = "0";
+            document.getElementById('stat-acc').textContent = "100%";
+            refreshGameScreen();
+            
+            interval = setInterval(() => {
+                timer--; document.getElementById('stat-time').textContent = timer + 's';
+                if(timer <= 0) endSession(false);
+            }, 1000);
+        });
+
+        function refreshGameScreen() {
+            document.getElementById('key-big').textContent = currentPattern[idx].toUpperCase();
+            document.getElementById('seq-preview').innerHTML = currentPattern.map((k, i) => i === idx ? `<span class="current">${k.toUpperCase()}</span>` : `<span>${k.toUpperCase()}</span>`).join(' ');
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if(!isPlaying) return;
+            if(['z','q','s','d'].includes(e.key.toLowerCase())) e.preventDefault();
+            if(e.key.toLowerCase() === activeBind.toLowerCase()) return;
+
+            total++;
+            const screen = document.getElementById('exercise-screen');
+            if (e.key.toLowerCase() === currentPattern[idx] && isBindActive) {
+                score++; idx = (idx + 1) % currentPattern.length;
+                screen.className = "display-screen success"; setTimeout(() => screen.className="display-screen", 60);
+                refreshGameScreen();
+            } else {
+                screen.className = "display-screen error"; setTimeout(() => screen.className="display-screen", 60);
+            }
+            document.getElementById('stat-hits').textContent = score;
+            document.getElementById('stat-acc').textContent = Math.round((score/total)*100) + '%';
+        });
+
+        async function endSession(isForcedStop = false) {
+            clearInterval(interval); 
+            isPlaying = false;
+            
+            const triggerBtn = document.getElementById('btn-session-trigger');
+            triggerBtn.textContent = "Lancer la Session";
+            triggerBtn.classList.remove('running');
+            
+            // Remise de l'écran par défaut
+            document.getElementById('key-big').textContent = "-";
+            document.getElementById('seq-preview').textContent = "En attente...";
+
+            const alertUi = document.getElementById('embedded-alert');
+            if (isForcedStop) {
+                // UI Si arrêt volontaire
+                alertUi.className = "embedded-notification stopped";
+                alertUi.innerHTML = `<i class="fa-solid fa-hand"></i> Session interrompue ! Score conservé : <strong style="color:var(--accent-color);">${score}</strong>`;
+            } else {
+                // UI Si fin naturelle au timer
+                alertUi.className = "embedded-notification";
+                alertUi.innerHTML = `<i class="fa-solid fa-square-check"></i> Session terminée ! Score final : <strong style="color:var(--accent-color);">${score}</strong>`;
+            }
+            alertUi.style.display = 'block';
+
+            // Envoi à la bdd uniquement si un score a été fait
+            if(myName && score > 0) {
+                await supabaseClient.from('leaderboards').insert([{ username: myName, score: score, pattern: selectedPattern, duration: selectedDuration.toString() }]);
+            }
+            if(currentMatchId) {
+                await supabaseClient.from('challenges').update({ target_score: score, status: 'completed' }).eq('id', currentMatchId);
+                document.getElementById('active-duel-status').textContent = "Score transmis !";
+                currentMatchId = null;
+            }
+        }
+
+        function listenToChallenges() {
+            supabaseClient.channel('public:challenges').on('postgres_changes', { event: 'INSERT', filter: `target_id=eq.${myId}`, schema: 'public', table: 'challenges' }, payload => {
+                document.getElementById('match-invite-box').style.display = 'flex';
+                document.getElementById('btn-challenge-ok').onclick = () => {
+                    currentMatchId = payload.new.id;
+                    document.getElementById('match-invite-box').style.display = 'none';
+                    document.getElementById('active-duel-status').textContent = "Défi Actif ! Jouez maintenant.";
+                };
+            }).subscribe();
+        }
+    </script>
+</body>
+</html>

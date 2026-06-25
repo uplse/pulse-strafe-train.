@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connexion - Pulse Strafe</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-color: #06070d;
+            --card-bg: rgba(13, 16, 29, 0.4);
+            --border-color: rgba(255, 255, 255, 0.05);
+            --accent-color: #00f0ff;
+            --text-color: #f1f5f9;
+        }
+        * { box-sizing: border-box; }
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Segoe UI', sans-serif;
+            margin: 0; padding: 0;
+            display: flex; align-items: center; justify-content: center;
+            min-height: 100vh;
+        }
+        .login-container {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            padding: 40px;
+            border-radius: 24px;
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+        }
+        .logo {
+            font-size: 48px;
+            color: var(--accent-color);
+            margin-bottom: 20px;
+            text-shadow: 0 0 20px rgba(0, 240, 255, 0.3);
+        }
+        h1 { font-size: 24px; font-weight: 800; margin: 0 0 10px 0; }
+        p { color: #64748b; font-size: 14px; margin-bottom: 30px; }
+        .btn-discord {
+            display: flex; align-items: center; justify-content: center; gap: 12px;
+            background: #5865F2; color: white; text-decoration: none;
+            padding: 14px 24px; border-radius: 12px; font-weight: 700;
+            font-size: 15px; transition: all 0.3s ease; width: 100%;
+        }
+        .btn-discord:hover {
+            background: #4752c4;
+            box-shadow: 0 0 15px rgba(88, 101, 242, 0.4);
+            transform: translateY(-1px);
+        }
+        .btn-guest {
+            display: inline-block; margin-top: 20px; color: #64748b; 
+            text-decoration: none; font-size: 13px; font-weight: 600; transition: 0.2s;
+        }
+        .btn-guest:hover { color: var(--accent-color); text-decoration: underline; }
+    </style>
+</head>
+<body>
+
+    <div class="login-container">
+        <div class="logo"><i class="fa-solid fa-bolt"></i></div>
+        <h1>Pulse Strafe</h1>
+        <p>Connectez-vous avec votre compte Discord pour accéder à votre profil, vos statistiques et vos défis.</p>
+        
+        <!-- Bouton de connexion Discord -->
+        <a id="discord-login-btn" href="#" class="btn-discord">
+            <i class="fa-brands fa-discord"></i> Se connecter avec Discord
+        </a>
+
+        <!-- Bouton Invité -->
+        <a href="game.html" class="btn-guest">Continuer en tant qu'invité →</a>
+    </div>
+
+    <script>
+        // ⚠️ REMPLACE TOUT LE TEXTE ENTRE LES GUILLEMETS CI-DESSOUS PAR TON LIEN DISCORD OAUTH2 GENERÉ
+        const DISCORD_AUTH_URL = "https://discord.com/oauth2/authorize?client_id=1519106075444641812&response_type=token&redirect_uri=https%3A%2F%2Fuplse.github.io%2Fpulse-strafe-train.%2Fgame.html&scope=identify";
+
+        // Application directe du lien sur le bouton au chargement de la page
+        document.getElementById('discord-login-btn').href = DISCORD_AUTH_URL;
+    </script>
+</body>
+</html>

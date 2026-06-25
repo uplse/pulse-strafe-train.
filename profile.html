@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profil - Pulse Strafe</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; }
+        :root {
+            --bg-color: #06070d; 
+            --card-bg: rgba(13, 16, 29, 0.6);
+            --border-color: rgba(255, 255, 255, 0.05); 
+            --accent-color: #00f0ff; 
+            --primary-color: #3b82f6;
+            --text-color: #f1f5f9;
+        }
+        body { background-color: var(--bg-color); color: var(--text-color); font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; display: flex; min-height: 100vh; position: relative; overflow: hidden; }
+        .bg-video-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; overflow: hidden; pointer-events: none; }
+        .bg-video { width: 100%; height: 100%; object-fit: cover; transition: filter 0.3s ease; }
+        .sidebar { width: 85px; background: rgba(10, 12, 22, 0.9); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; align-items: center; padding: 25px 0; backdrop-filter: blur(10px); flex-shrink: 0; z-index: 10; }
+        .logo-area { font-size: 24px; color: var(--accent-color); margin-bottom: 50px; text-shadow: 0 0 15px var(--accent-color); }
+        .nav-links { display: flex; flex-direction: column; gap: 25px; width: 100%; align-items: center; }
+        .nav-item { width: 45px; height: 45px; display: flex; align-items: center; justify-content: center; border-radius: 12px; color: #64748b; text-decoration: none; font-size: 18px; transition: all 0.3s ease; }
+        .nav-item:hover, .nav-item.active { color: var(--accent-color); background: rgba(0, 240, 255, 0.05); border: 1px solid rgba(0, 240, 255, 0.15); }
+        .page-content { flex-grow: 1; padding: 40px; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 5; position: relative; width: calc(100% - 85px); height: 100vh; overflow-y: auto; }
+        .profile-card { background: rgba(12, 14, 23, 0.75); border: 1px solid var(--border-color); width: 100%; max-width: 500px; border-radius: 24px; padding: 35px; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.6); backdrop-filter: blur(8px); position: relative; transition: 0.3s ease; }
+        .avatar-container { width: 100px; height: 100px; border-radius: 50%; border: 3px solid var(--accent-color); margin: 0 auto 15px auto; background-size: cover; background-position: center; box-shadow: 0 0 20px rgba(0,240,255,0.2); }
+        .username { font-size: 24px; font-weight: 800; margin: 0 0 5px 0; }
+        .user-id { font-size: 11px; color: #475569; font-family: monospace; margin-bottom: 15px; }
+        .bio-text { color: #94a3b8; font-size: 13.5px; margin: 0 auto 20px auto; max-width: 85%; line-height: 1.5; font-style: italic; word-wrap: break-word; }
+        .socials-row { display: flex; justify-content: center; gap: 14px; margin-bottom: 25px; min-height: 24px; }
+        .social-icon { color: #64748b; font-size: 18px; transition: 0.2s; text-decoration: none; }
+        .social-icon:hover { color: var(--accent-color); transform: translateY(-2px); }
+        .music-player-box { background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 16px; padding: 12px 18px; display: flex; align-items: center; gap: 15px; justify-content: space-between; }
+        .music-info { text-align: left; }
+        .music-title { font-size: 13px; font-weight: 700; color: white; margin: 0; max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .play-btn { background: var(--accent-color); border: none; width: 34px; height: 34px; border-radius: 50%; color: #06070d; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 13px; transition: 0.2s; }
+        .play-btn:hover { transform: scale(1.05); box-shadow: 0 0 10px rgba(0,240,255,0.4); }
+        .btn-action-profile { border: none; color: white; padding: 10px 20px; border-radius: 10px; font-weight: 700; font-size: 12px; cursor: pointer; width: 100%; margin-top: 20px; transition: 0.2s; text-transform: uppercase; letter-spacing: 0.5px; }
+        .btn-duel { background: linear-gradient(135deg, var(--primary-color), #1d4ed8); }
+        .btn-edit { background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-color); color: #94a3b8; }
+        .btn-edit:hover { background: rgba(255, 255, 255, 0.1); color: white; }
+        .edit-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(2, 3, 6, 0.85); z-index: 100; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
+        .modal-content { background: #0c0e17; border: 1px solid var(--border-color); width: 90%; max-width: 520px; border-radius: 20px; padding: 30px; max-height: 85vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.7); }
+        .modal-title { font-size: 16px; font-weight: 800; text-transform: uppercase; color: var(--accent-color); margin-top: 0; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; }
+        .form-group { margin-bottom: 18px; text-align: left; }
+        .form-group label { display: block; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 6px; }
+        .form-control { width: 100%; background: #020306; border: 1px solid var(--border-color); color: white; padding: 10px 14px; border-radius: 10px; font-size: 13px; outline: none; }
+        .form-control:focus { border-color: var(--accent-color); }
+        .socials-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .drop-zone { border: 2px dashed rgba(255,255,255,0.1); padding: 15px; border-radius: 10px; text-align: center; background: rgba(0,0,0,0.2); cursor: pointer; font-size: 12px; color: #64748b; transition: 0.2s; position: relative; }
+        .drop-zone:hover, .drop-zone.dragover { border-color: var(--accent-color); color: white; background: rgba(0, 240, 255, 0.02); }
+        .drop-zone-meta { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; background: rgba(255,255,255,0.02); padding: 6px 10px; border-radius: 6px; font-size: 11px; color: #94a3b8; }
+        .btn-remove-media { background: #ef4444; border: none; color: white; padding: 2px 6px; border-radius: 4px; cursor: pointer; font-size: 10px; }
+        .modal-actions { display: flex; gap: 10px; margin-top: 25px; }
+        .btn-modal { flex: 1; padding: 12px; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 13px; }
+        .btn-save { background: var(--accent-color); color: #06070d; }
+        .btn-cancel { background: rgba(255,255,255,0.05); color: #64748b; }
+    </style>
+</head>
+<body>
+
+    <div class="bg-video-container">
+        <video id="global-bg-video" class="bg-video" autoplay loop muted playsinline style="display:none;"></video>
+    </div>
+
+    <div class="sidebar">
+        <div class="logo-area"><i class="fa-solid fa-bolt"></i></div>
+        <div class="nav-links">
+            <a id="nav-home" href="game.html" class="nav-item"><i class="fa-solid fa-house"></i></a>
+            <a id="nav-leaderboard" href="leaderboard.html" class="nav-item"><i class="fa-solid fa-trophy"></i></a>
+            <a id="nav-profile" href="#" class="nav-item active"><i class="fa-solid fa-user"></i></a>
+            <a id="nav-settings" href="settings.html" class="nav-item"><i class="fa-solid fa-gear"></i></a>
+        </div>
+    </div>
+
+    <div class="page-content">
+        <div class="profile-card">
+            <div id="user-avatar" class="avatar-container" style="background-image: url('https://cdn.discordapp.com/embed/avatars/0.png');"></div>
+            <h2 id="user-name" class="username">Chargement...</h2>
+            <div id="user-id" class="user-id">ID: 0000000000</div>
+            <p id="user-bio" class="bio-text"></p>
+            <div id="user-socials" class="socials-row"></div>
+            <div class="music-player-box">
+                <div style="display: flex; align-items: center; gap: 12px; width: 80%;">
+                    <i class="fa-solid fa-music" style="color: var(--accent-color); font-size: 16px;"></i>
+                    <div class="music-info">
+                        <p class="music-title" id="track-name">Aucune musique chargée</p>
+                    </div>
+                </div>
+                <button id="btn-audio-toggle" class="play-btn" style="display:none;"><i class="fa-solid fa-play"></i></button>
+                <audio id="profile-audio" loop></audio>
+            </div>
+            <button id="btn-send-challenge" class="btn-action-profile btn-duel" style="display: none;"><i class="fa-solid fa-crosshairs"></i> Défier en 1v1</button>
+            <button id="btn-open-edit" class="btn-action-profile btn-edit" style="display: none;"><i class="fa-solid fa-pen-to-square"></i> Modifier le Profil</button>
+        </div>
+    </div>
+
+    <div id="edit-profile-modal" class="edit-modal">
+        <div class="modal-content">
+            <div class="modal-title">Éditer mon Profil</div>
+            <div class="form-group">
+                <label>Biographie (Max 100 caractères)</label>
+                <textarea id="edit-bio" class="form-control" rows="2" maxlength="100" placeholder="Raconte ton histoire..."></textarea>
+            </div>
+            <div class="form-group">
+                <label>Réseaux Sociaux</label>
+                <div class="socials-grid">
+                    <input type="text" id="social-discord" class="form-control" style="margin-bottom:8px;" placeholder="Discord (Pseudo)">
+                    <input type="text" id="social-youtube" class="form-control" style="margin-bottom:8px;" placeholder="YouTube (Lien)">
+                    <input type="text" id="social-tiktok" class="form-control" style="margin-bottom:8px;" placeholder="TikTok (Lien)">
+                    <input type="text" id="social-snapchat" class="form-control" style="margin-bottom:8px;" placeholder="Snapchat (Nom)">
+                    <input type="text" id="social-roblox" class="form-control" style="margin-bottom:8px;" placeholder="Roblox (User)">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Musique d'ambiance (Glisser-Déposer fichier .mp3)</label>
+                <div id="audio-drop-zone" class="drop-zone">Glacez ou Déposez votre fichier audio ici <input type="file" id="audio-file-input" accept="audio/mp3" style="display:none;"></div>
+                <div id="audio-meta-area" class="drop-zone-meta" style="display:none;"><span id="audio-file-name" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:80%;">Fichier</span><button type="button" id="btn-clear-audio" class="btn-remove-media">Retirer</button></div>
+            </div>
+            <div class="form-group">
+                <label>Vidéo de fond (Glisser-Déposer fichier .mp4)</label>
+                <div id="video-drop-zone" class="drop-zone">Glissez ou Déposez votre fichier vidéo ici <input type="file" id="video-file-input" accept="video/mp4" style="display:none;"></div>
+                <div id="video-meta-area" class="drop-zone-meta" style="display:none;"><span id="video-file-name" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:80%;">Fichier</span><button type="button" id="btn-clear-video" class="btn-remove-media">Retirer</button></div>
+            </div>
+            <div class="form-group">
+                <label id="lbl-blur">Intensité du Flou Vidéo : 5px</label>
+                <input type="range" id="slider-blur" min="0" max="25" value="5" style="width:100%; accent-color:var(--accent-color);">
+            </div>
+            <div class="modal-actions">
+                <button id="btn-cancel-modal" class="btn-modal btn-cancel">Annuler</button>
+                <button id="btn-save-modal" class="btn-modal btn-save">Sauvegarder</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = "https://gdhbpreipbdipvzlhigw.supabase.co";
+        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkaGJwcmVpcGJkaXB2emxoaWd3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyNDc4NjQsImV4cCI6MjA5NzgyMzg2NH0.udKJGkdR5sATP7NavFCZuiYZgyfAp8umsyNvkSCVEdg";
+        // CORRECTION : Initialisation corrigée
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const targetId = urlParams.get('id');
+        
+        function getAccessToken() {
+            const hashParams = new URLSearchParams(window.location.hash.substring(1));
+            return hashParams.get('access_token') || urlParams.get('access_token');
+        }
+
+        const token = getAccessToken();
+        let myId = ""; 
+        let profileData = null;
+        let tempAudioBase64 = null, tempAudioName = "";
+        let tempVideoBase64 = null;
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            document.getElementById('nav-home').href = `game.html${token ? '#access_token='+token : ''}`;
+            document.getElementById('nav-leaderboard').href = `leaderboard.html${token ? '#access_token='+token : ''}`;
+            document.getElementById('nav-settings').href = `settings.html${token ? '#access_token='+token : ''}`;
+            document.getElementById('nav-profile').href = token ? `profile.html?id=me#access_token=${token}` : 'index.html';
+
+            if (token) {
+                const res = await fetch('https://discord.com/api/users/@me', { headers: { Authorization: `Bearer ${token}` } });
+                if (res.ok) {
+                    const user = await res.json(); 
+                    myId = user.id;
+                    if (!targetId || targetId === "me") {
+                        window.location.href = `profile.html?id=${myId}#access_token=${token}`;
+                        return;
+                    }
+                }
+            }
+
+            if (!targetId) {
+                document.getElementById('user-name').textContent = "Profil non spécifié";
+                return;
+            }
+
+            const { data, error } = await supabase.from('user_profiles').select('*').eq('id', targetId).single();
+            if (data) {
+                profileData = data;
+                displayProfile();
+            } else {
+                document.getElementById('user-name').textContent = "Profil introuvable";
+            }
+        });
+
+        function displayProfile() {
+            document.getElementById('user-name').textContent = profileData.username;
+            document.getElementById('user-id').textContent = `ID: ${profileData.id}`;
+            if(profileData.avatar_url) document.getElementById('user-avatar').style.backgroundImage = `url('${profileData.avatar_url}')`;
+            
+            if (profileData.user_theme) {
+                Object.entries(profileData.user_theme).forEach(([key, value]) => {
+                    document.documentElement.style.setProperty(`--${key}`, value);
+                });
+            }
+
+            document.getElementById('user-bio').textContent = profileData.bio || "Aucune biographie rédigée.";
+            renderSocials(profileData.socials);
+
+            const bgVideo = document.getElementById('global-bg-video');
+            if (profileData.video_data) {
+                bgVideo.src = profileData.video_data;
+                bgVideo.style.filter = `blur(${profileData.video_blur || 5}px)`;
+                bgVideo.style.display = "block";
+            }
+
+            const audioEl = document.getElementById('profile-audio');
+            const playBtn = document.getElementById('btn-audio-toggle');
+            if (profileData.audio_data) {
+                audioEl.src = profileData.audio_data;
+                document.getElementById('track-name').textContent = profileData.audio_name || "Musique personnalisée";
+                playBtn.style.display = "flex";
+            }
+
+            if (myId && myId === profileData.id) {
+                document.getElementById('btn-open-edit').style.display = "block";
+            } else if (myId) {
+                const challengeBtn = document.getElementById('btn-send-challenge');
+                challengeBtn.style.display = "block";
+                challengeBtn.onclick = async () => {
+                    await supabase.from('challenges').insert([{ challenger_id: myId, target_id: profileData.id, status: 'pending' }]);
+                    challengeBtn.textContent = "Défi envoyé !";
+                    challengeBtn.disabled = true;
+                };
+            }
+        }
+
+        function renderSocials(socials) {
+            const container = document.getElementById('user-socials');
+            container.innerHTML = "";
+            if(!socials) return;
+            const map = { discord: "fa-brands fa-discord", youtube: "fa-brands fa-youtube", tiktok: "fa-brands fa-tiktok", snapchat: "fa-brands fa-snapchat", roblox: "fa-solid fa-gamepad" };
+            Object.entries(socials).forEach(([key, value]) => {
+                if(value && value.trim() !== "") {
+                    const href = value.startsWith('http') ? value : '#';
+                    container.innerHTML += `<a href="${href}" target="_blank" class="social-icon"><i class="${map[key] || 'fa-solid fa-link'}"></i></a>`;
+                }
+            });
+        }
+
+        const audio = document.getElementById('profile-audio');
+        const toggleBtn = document.getElementById('btn-audio-toggle');
+        toggleBtn.addEventListener('click', () => {
+            if (audio.paused) { audio.play(); toggleBtn.innerHTML = `<i class="fa-solid fa-pause"></i>`; } 
+            else { audio.pause(); toggleBtn.innerHTML = `<i class="fa-solid fa-play"></i>`; }
+        });
+
+        const modal = document.getElementById('edit-profile-modal');
+        document.getElementById('btn-open-edit').addEventListener('click', () => {
+            document.getElementById('edit-bio').value = profileData.bio || "";
+            const soc = profileData.socials || {};
+            document.getElementById('social-discord').value = soc.discord || "";
+            document.getElementById('social-youtube').value = soc.youtube || "";
+            document.getElementById('social-tiktok').value = soc.tiktok || "";
+            document.getElementById('social-snapchat').value = soc.snapchat || "";
+            document.getElementById('social-roblox').value = soc.roblox || "";
+            tempAudioBase64 = profileData.audio_data;
+            tempAudioName = profileData.audio_name || "";
+            tempVideoBase64 = profileData.video_data;
+            updateMediaMetaDOM();
+            document.getElementById('slider-blur').value = profileData.video_blur || 5;
+            modal.style.display = "flex";
+        });
+
+        document.getElementById('btn-cancel-modal').addEventListener('click', () => modal.style.display = "none");
+        document.getElementById('slider-blur').addEventListener('input', (e) => { document.getElementById('lbl-blur').textContent = `Intensité du Flou Vidéo : ${e.target.value}px`; });
+
+        function updateMediaMetaDOM() {
+            if(tempAudioBase64) { document.getElementById('audio-meta-area').style.display = "flex"; document.getElementById('audio-file-name').textContent = tempAudioName || "Audio lié"; } 
+            else { document.getElementById('audio-meta-area').style.display = "none"; }
+            if(tempVideoBase64) { document.getElementById('video-meta-area').style.display = "flex"; document.getElementById('video-file-name').textContent = "Vidéo active"; } 
+            else { document.getElementById('video-meta-area').style.display = "none"; }
+        }
+
+        document.getElementById('btn-clear-audio').addEventListener('click', () => { tempAudioBase64 = null; tempAudioName = ""; updateMediaMetaDOM(); });
+        document.getElementById('btn-clear-video').addEventListener('click', () => { tempVideoBase64 = null; updateMediaMetaDOM(); });
+
+        function initDragAndDrop(zoneId, inputId, type, callback) {
+            const zone = document.getElementById(zoneId); const input = document.getElementById(inputId);
+            zone.addEventListener('click', () => input.click());
+            zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('dragover'); });
+            zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+            zone.addEventListener('drop', (e) => { e.preventDefault(); zone.classList.remove('dragover'); if(e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0], type, callback); });
+            input.addEventListener('change', (e) => { if(e.target.files.length > 0) handleFile(e.target.files[0], type, callback); });
+        }
+
+        function handleFile(file, type, callback) {
+            if((type === 'audio' && !file.type.includes('audio')) || (type === 'video' && !file.type.includes('video'))) return;
+            const reader = new FileReader(); reader.onload = (e) => callback(e.target.result, file.name); reader.readAsDataURL(file);
+        }
+
+        initDragAndDrop('audio-drop-zone', 'audio-file-input', 'audio', (base64, name) => { tempAudioBase64 = base64; tempAudioName = name; updateMediaMetaDOM(); });
+        initDragAndDrop('video-drop-zone', 'video-file-input', 'video', (base64) => { tempVideoBase64 = base64; updateMediaMetaDOM(); });
+
+        document.getElementById('btn-save-modal').addEventListener('click', async () => {
+            const updatedBio = document.getElementById('edit-bio').value.trim();
+            const socialsObj = {
+                discord: document.getElementById('social-discord').value.trim(),
+                youtube: document.getElementById('social-youtube').value.trim(),
+                tiktok: document.getElementById('social-tiktok').value.trim(),
+                snapchat: document.getElementById('social-snapchat').value.trim(),
+                roblox: document.getElementById('social-roblox').value.trim()
+            };
+            const updatedBlur = parseInt(document.getElementById('slider-blur').value);
+            const { error } = await supabase.from('user_profiles').update({
+                bio: updatedBio, socials: socialsObj, audio_data: tempAudioBase64, audio_name: tempAudioName, video_data: tempVideoBase64, video_blur: updatedBlur
+            }).eq('id', myId);
+            if(!error) {
+                profileData.bio = updatedBio; profileData.socials = socialsObj; profileData.audio_data = tempAudioBase64; profileData.audio_name = tempAudioName; profileData.video_data = tempVideoBase64; profileData.video_blur = updatedBlur;
+                modal.style.display = "none"; displayProfile();
+            } else { alert("Erreur : " + error.message); }
+        });
+    </script>
+</body>
+</html>

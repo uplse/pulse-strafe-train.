@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Classement Mondial - Pulse Strafe</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; }
+        :root {
+            --bg-color: #06070d; 
+            --card-bg: rgba(13, 16, 29, 0.6);
+            --border-color: rgba(255, 255, 255, 0.05); 
+            --accent-color: #00f0ff; 
+            --text-color: #f1f5f9;
+        }
+        body { background-color: var(--bg-color); color: var(--text-color); font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; display: flex; min-height: 100vh; }
+        
+        .sidebar { width: 85px; background: rgba(10, 12, 22, 0.9); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; align-items: center; padding: 25px 0; backdrop-filter: blur(10px); flex-shrink: 0; }
+        .logo-area { font-size: 24px; color: var(--accent-color); margin-bottom: 50px; text-shadow: 0 0 15px var(--accent-color); }
+        .nav-links { display: flex; flex-direction: column; gap: 25px; width: 100%; align-items: center; }
+        .nav-item { width: 45px; height: 45px; display: flex; align-items: center; justify-content: center; border-radius: 12px; color: #64748b; text-decoration: none; font-size: 18px; transition: all 0.3s ease; }
+        .nav-item:hover, .nav-item.active { color: var(--accent-color); background: rgba(0, 240, 255, 0.05); border: 1px solid rgba(0, 240, 255, 0.15); box-shadow: 0 0 15px rgba(0, 240, 255, 0.1); }
+
+        .page-content { flex-grow: 1; padding: 40px; display: flex; flex-direction: column; align-items: center; height: 100vh; overflow-y: auto; }
+        .leaderboard-window { background: #0c0e17; border: 1px solid var(--border-color); width: 100%; max-width: 750px; border-radius: 24px; padding: 35px; box-shadow: 0 20px 50px rgba(0,0,0,0.6); }
+        
+        .header-area { display: flex; align-items: center; gap: 15px; font-size: 22px; font-weight: 800; text-transform: uppercase; border-bottom: 1px solid var(--border-color); padding-bottom: 20px; margin-bottom: 25px; }
+        
+        .filters-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 30px; }
+        .form-select { width: 100%; background: #020306; border: 1px solid var(--border-color); color: white; padding: 12px; border-radius: 10px; font-size: 13px; outline: none; cursor: pointer; }
+
+        .leaderboard-table { width: 100%; border-collapse: collapse; }
+        .leaderboard-table th { text-align: left; font-size: 11px; color: #64748b; text-transform: uppercase; padding-bottom: 12px; border-bottom: 1px solid var(--border-color); letter-spacing: 0.5px; }
+        .leaderboard-table td { padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.02); font-size: 15px; vertical-align: middle; }
+        
+        .player-cell { display: flex; align-items: center; gap: 12px; }
+        .lb-avatar { width: 32px; height: 32px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.1); background-size: cover; background-position: center; background-color: #1e2235; }
+        .username-link { color: white; text-decoration: none; font-weight: 600; }
+        .username-link:hover { color: var(--accent-color); }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <div class="logo-area"><i class="fa-solid fa-bolt"></i></div>
+        <div class="nav-links">
+            <a id="nav-home" href="game.html" class="nav-item"><i class="fa-solid fa-house"></i></a>
+            <a id="nav-leaderboard" href="leaderboard.html" class="nav-item active"><i class="fa-solid fa-trophy"></i></a>
+            <a id="nav-profile" href="#" class="nav-item"><i class="fa-solid fa-user"></i></a>
+            <a id="nav-settings" href="settings.html" class="nav-item"><i class="fa-solid fa-gear"></i></a>
+        </div>
+    </div>
+
+    <div class="page-content">
+        <div class="leaderboard-window">
+            <div class="header-area">
+                <i class="fa-solid fa-crown" style="color: #eab308;"></i>
+                <span>Classement Général (Scores Uniques)</span>
+            </div>
+
+            <div class="filters-row">
+                <div>
+                    <label style="font-size:11px; color:#64748b; display:block; margin-bottom:6px; font-weight:700; text-transform:uppercase;">Pattern</label>
+                    <select id="filter-pattern" class="form-select">
+                        <option value="btp">BTP classique</option>
+                        <option value="zqsd">Strafe Standard</option>
+                        <option value="zdsq">ZDQSD Custom</option>
+                        <option value="qd">Fast QD</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-size:11px; color:#64748b; display:block; margin-bottom:6px; font-weight:700; text-transform:uppercase;">Durée</label>
+                    <select id="filter-duration" class="form-select">
+                        <option value="15">15 Secondes</option>
+                        <option value="30" selected>30 Secondes</option>
+                    </select>
+                </div>
+                <!-- AJOUT SÉLECTEUR DU NOMBRE DE PLACES -->
+                <div>
+                    <label style="font-size:11px; color:#64748b; display:block; margin-bottom:6px; font-weight:700; text-transform:uppercase;">Affichage</label>
+                    <select id="filter-limit" class="form-select">
+                        <option value="5">Top 5</option>
+                        <option value="10" selected>Top 10</option>
+                        <option value="25">Top 25</option>
+                        <option value="50">Top 50</option>
+                        <option value="100">Top 100</option>
+                    </select>
+                </div>
+            </div>
+
+            <table class="leaderboard-table">
+                <thead>
+                    <tr>
+                        <th style="width: 12%;">Rang</th>
+                        <th>Joueur</th>
+                        <th style="text-align: right;">Score max</th>
+                    </tr>
+                </thead>
+                <tbody id="leaderboard-rows">
+                    <tr><td colspan="3" style="color: #64748b; text-align: center; padding: 30px;">Chargement...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = "https://gdhbpreipbdipvzlhigw.supabase.co";
+        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkaGJwcmVpcGJkaXB2emxoaWd3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyNDc4NjQsImV4cCI6MjA5NzgyMzg2NH0.udKJGkdR5sATP7NavFCZuiYZgyfAp8umsyNvkSCVEdg";
+        const dbPulse = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('access_token');
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            if (token) {
+                document.getElementById('nav-home').href = `game.html?access_token=${token}`;
+                document.getElementById('nav-leaderboard').href = `leaderboard.html?access_token=${token}`;
+                document.getElementById('nav-settings').href = `settings.html?access_token=${token}`;
+                const res = await fetch('https://discord.com/api/users/@me', { headers: { Authorization: `Bearer ${token}` } });
+                if (res.ok) {
+                    const user = await res.json();
+                    document.getElementById('nav-profile').href = `profile.html?id=${user.id}&access_token=${token}`;
+                }
+            } else { document.getElementById('nav-profile').href = 'index.html'; }
+            renderLeaderboard();
+        });
+
+        async function renderLeaderboard() {
+            const pattern = document.getElementById('filter-pattern').value;
+            const duration = document.getElementById('filter-duration').value;
+            const maxDisplay = parseInt(document.getElementById('filter-limit').value);
+            const rowsContainer = document.getElementById('leaderboard-rows');
+
+            // 1. On charge une liste élargie pour pouvoir filtrer et dédoublonner
+            const { data: scores } = await dbPulse
+                .from('leaderboards')
+                .select('*')
+                .eq('pattern', pattern)
+                .or(`duration.eq.${duration},duration.eq.${parseInt(duration)}`)
+                .order('score', { ascending: false });
+
+            // 2. On charge les vrais comptes valides existants
+            const { data: profiles } = await dbPulse.from('user_profiles').select('username, avatar_url, id');
+            
+            const validProfiles = {};
+            if (profiles) {
+                profiles.forEach(p => { validProfiles[p.username] = { avatar: p.avatar_url, id: p.id }; });
+            }
+
+            if (!scores || scores.length === 0) {
+                rowsContainer.innerHTML = '<tr><td colspan="3" style="text-align:center; color:#64748b; padding:30px;">Aucun score.</td></tr>';
+                return;
+            }
+
+            // 3. Traitement : Dédoublonnage (Highscore uniquement) & Suppression des sans-comptes
+            const filteredPlayers = [];
+            const seenPlayers = new Set();
+
+            for (let s of scores) {
+                // Condition : Doit posséder un compte discord actif lié en bdd
+                if (!validProfiles[s.username]) continue; 
+                
+                // Condition : Un seul score unique (le plus haut vu que c'est trié par desc)
+                if (!seenPlayers.has(s.username)) {
+                    seenPlayers.add(s.username);
+                    filteredPlayers.push({
+                        username: s.username,
+                        score: s.score,
+                        avatar: validProfiles[s.username].avatar,
+                        id: validProfiles[s.username].id
+                    });
+                }
+            }
+
+            // Limitation au nombre demandé par l'utilisateur (5, 10, 25, etc.)
+            const finalSelection = filteredPlayers.slice(0, maxDisplay);
+
+            if(finalSelection.length === 0) {
+                rowsContainer.innerHTML = '<tr><td colspan="3" style="text-align:center; color:#64748b; padding:30px;">Aucun joueur valide dans cette section.</td></tr>';
+                return;
+            }
+
+            let html = '';
+            finalSelection.forEach((p, index) => {
+                let badgeColor = index === 0 ? '#eab308' : index === 1 ? '#cbd5e1' : index === 2 ? '#b45309' : '#64748b';
+                let userAvatar = p.avatar || "https://cdn.discordapp.com/embed/avatars/0.png";
+
+                html += `<tr>
+                    <td style="font-weight:900; color:${badgeColor}">#${index+1}</td>
+                    <td>
+                        <div class="player-cell">
+                            <div class="lb-avatar" style="background-image: url('${userAvatar}')"></div>
+                            <a class="username-link" href="profile.html?id=${p.id}${token ? '&access_token='+token : ''}">${p.username}</a>
+                        </div>
+                    </td>
+                    <td style="text-align:right; font-weight:bold; color:var(--accent-color); font-size: 16px;">${p.score}</td>
+                </tr>`;
+            });
+            rowsContainer.innerHTML = html;
+        }
+
+        document.getElementById('filter-pattern').addEventListener('change', renderLeaderboard);
+        document.getElementById('filter-duration').addEventListener('change', renderLeaderboard);
+        document.getElementById('filter-limit').addEventListener('change', renderLeaderboard);
+    </script>
+</body>
+</html>
