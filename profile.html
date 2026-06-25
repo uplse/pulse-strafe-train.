@@ -4,15 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Profil - Pulse Strafe</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         *, *::before, *::after { box-sizing: border-box; }
         :root {
-            --bg-color: #06070d; 
+            --bg-color: #06070d;
             --card-bg: rgba(13, 16, 29, 0.6);
-            --border-color: rgba(255, 255, 255, 0.05); 
-            --accent-color: #00f0ff; 
+            --border-color: rgba(255, 255, 255, 0.05);
+            --accent-color: #00f0ff;
             --primary-color: #3b82f6;
             --text-color: #f1f5f9;
         }
@@ -117,7 +117,7 @@
             </div>
             <div class="form-group">
                 <label>Musique d'ambiance (Glisser-Déposer fichier .mp3)</label>
-                <div id="audio-drop-zone" class="drop-zone">Glacez ou Déposez votre fichier audio ici <input type="file" id="audio-file-input" accept="audio/mp3" style="display:none;"></div>
+                <div id="audio-drop-zone" class="drop-zone">Glissez ou Déposez votre fichier audio ici <input type="file" id="audio-file-input" accept="audio/mp3" style="display:none;"></div>
                 <div id="audio-meta-area" class="drop-zone-meta" style="display:none;"><span id="audio-file-name" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:80%;">Fichier</span><button type="button" id="btn-clear-audio" class="btn-remove-media">Retirer</button></div>
             </div>
             <div class="form-group">
@@ -137,77 +137,62 @@
     </div>
 
     <script>
+        // FIX: Utiliser window.supabase.createClient car la lib est chargée via CDN UMD
         const SUPABASE_URL = "https://gdhbpreipbdipvzlhigw.supabase.co";
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkaGJwcmVpcGJkaXB2emxoaWd3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyNDc4NjQsImV4cCI6MjA5NzgyMzg2NH0.udKJGkdR5sATP7NavFCZuiYZgyfAp8umsyNvkSCVEdg";
-        // CORRECTION : Initialisation corrigée
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         const urlParams = new URLSearchParams(window.location.search);
         const targetId = urlParams.get('id');
-        
+
         function getAccessToken() {
             const hashParams = new URLSearchParams(window.location.hash.substring(1));
             return hashParams.get('access_token') || urlParams.get('access_token');
         }
 
         const token = getAccessToken();
-        let myId = ""; 
+        let myId = "";
         let profileData = null;
         let tempAudioBase64 = null, tempAudioName = "";
         let tempVideoBase64 = null;
 
-window.addEventListener('DOMContentLoaded', async () => {
-            // 1. Mise à jour des liens
+        window.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('nav-home').href = `game.html${token ? '#access_token='+token : ''}`;
             document.getElementById('nav-leaderboard').href = `leaderboard.html${token ? '#access_token='+token : ''}`;
             document.getElementById('nav-settings').href = `settings.html${token ? '#access_token='+token : ''}`;
             document.getElementById('nav-profile').href = token ? `profile.html?id=me#access_token=${token}` : 'index.html';
 
-            // 2. Récupérer mon ID si connecté
             if (token) {
                 const res = await fetch('https://discord.com/api/users/@me', { headers: { Authorization: `Bearer ${token}` } });
                 if (res.ok) {
-                    const user = await res.json(); 
+                    const user = await res.json();
                     myId = user.id;
-                    // Redirection si on demande "me"
-                    if (targetId === "me") {
+                    if (!targetId || targetId === "me") {
                         window.location.href = `profile.html?id=${myId}#access_token=${token}`;
                         return;
                     }
                 }
             }
 
-            // 3. LOGIQUE DE CHARGEMENT CORRIGÉE
             if (!targetId) {
-                document.getElementById('user-name').textContent = "Profil non trouvé";
+                document.getElementById('user-name').textContent = "Profil non spécifié";
                 return;
             }
 
-            console.log("Tentative de chargement du profil ID:", targetId);
-
-            // On s'assure que l'ID est bien une chaîne de caractères
-            const { data, error } = await supabase
-                .from('user_profiles')
-                .select('*')
-                .eq('id', String(targetId))
-                .single();
-
-            if (error) {
-                console.error("Erreur Supabase:", error);
-                document.getElementById('user-name').textContent = "Erreur de chargement";
-            } else if (data) {
+            const { data, error } = await supabaseClient.from('user_profiles').select('*').eq('id', targetId).single();
+            if (data) {
                 profileData = data;
-                displayProfile(); // Appel de la fonction qui affiche tout
+                displayProfile();
             } else {
-                document.getElementById('user-name').textContent = "Utilisateur inconnu";
+                document.getElementById('user-name').textContent = "Profil introuvable";
             }
         });
 
         function displayProfile() {
             document.getElementById('user-name').textContent = profileData.username;
             document.getElementById('user-id').textContent = `ID: ${profileData.id}`;
-            if(profileData.avatar_url) document.getElementById('user-avatar').style.backgroundImage = `url('${profileData.avatar_url}')`;
-            
+            if (profileData.avatar_url) document.getElementById('user-avatar').style.backgroundImage = `url('${profileData.avatar_url}')`;
+
             if (profileData.user_theme) {
                 Object.entries(profileData.user_theme).forEach(([key, value]) => {
                     document.documentElement.style.setProperty(`--${key}`, value);
@@ -222,6 +207,8 @@ window.addEventListener('DOMContentLoaded', async () => {
                 bgVideo.src = profileData.video_data;
                 bgVideo.style.filter = `blur(${profileData.video_blur || 5}px)`;
                 bgVideo.style.display = "block";
+            } else {
+                bgVideo.style.display = "none";
             }
 
             const audioEl = document.getElementById('profile-audio');
@@ -230,15 +217,20 @@ window.addEventListener('DOMContentLoaded', async () => {
                 audioEl.src = profileData.audio_data;
                 document.getElementById('track-name').textContent = profileData.audio_name || "Musique personnalisée";
                 playBtn.style.display = "flex";
+            } else {
+                playBtn.style.display = "none";
+                document.getElementById('track-name').textContent = "Aucune musique chargée";
             }
 
             if (myId && myId === profileData.id) {
                 document.getElementById('btn-open-edit').style.display = "block";
+                document.getElementById('btn-send-challenge').style.display = "none";
             } else if (myId) {
+                document.getElementById('btn-open-edit').style.display = "none";
                 const challengeBtn = document.getElementById('btn-send-challenge');
                 challengeBtn.style.display = "block";
                 challengeBtn.onclick = async () => {
-                    await supabase.from('challenges').insert([{ challenger_id: myId, target_id: profileData.id, status: 'pending' }]);
+                    await supabaseClient.from('challenges').insert([{ challenger_id: myId, target_id: profileData.id, status: 'pending' }]);
                     challengeBtn.textContent = "Défi envoyé !";
                     challengeBtn.disabled = true;
                 };
@@ -248,10 +240,10 @@ window.addEventListener('DOMContentLoaded', async () => {
         function renderSocials(socials) {
             const container = document.getElementById('user-socials');
             container.innerHTML = "";
-            if(!socials) return;
+            if (!socials) return;
             const map = { discord: "fa-brands fa-discord", youtube: "fa-brands fa-youtube", tiktok: "fa-brands fa-tiktok", snapchat: "fa-brands fa-snapchat", roblox: "fa-solid fa-gamepad" };
             Object.entries(socials).forEach(([key, value]) => {
-                if(value && value.trim() !== "") {
+                if (value && value.trim() !== "") {
                     const href = value.startsWith('http') ? value : '#';
                     container.innerHTML += `<a href="${href}" target="_blank" class="social-icon"><i class="${map[key] || 'fa-solid fa-link'}"></i></a>`;
                 }
@@ -261,7 +253,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         const audio = document.getElementById('profile-audio');
         const toggleBtn = document.getElementById('btn-audio-toggle');
         toggleBtn.addEventListener('click', () => {
-            if (audio.paused) { audio.play(); toggleBtn.innerHTML = `<i class="fa-solid fa-pause"></i>`; } 
+            if (audio.paused) { audio.play(); toggleBtn.innerHTML = `<i class="fa-solid fa-pause"></i>`; }
             else { audio.pause(); toggleBtn.innerHTML = `<i class="fa-solid fa-play"></i>`; }
         });
 
@@ -283,12 +275,14 @@ window.addEventListener('DOMContentLoaded', async () => {
         });
 
         document.getElementById('btn-cancel-modal').addEventListener('click', () => modal.style.display = "none");
-        document.getElementById('slider-blur').addEventListener('input', (e) => { document.getElementById('lbl-blur').textContent = `Intensité du Flou Vidéo : ${e.target.value}px`; });
+        document.getElementById('slider-blur').addEventListener('input', (e) => {
+            document.getElementById('lbl-blur').textContent = `Intensité du Flou Vidéo : ${e.target.value}px`;
+        });
 
         function updateMediaMetaDOM() {
-            if(tempAudioBase64) { document.getElementById('audio-meta-area').style.display = "flex"; document.getElementById('audio-file-name').textContent = tempAudioName || "Audio lié"; } 
+            if (tempAudioBase64) { document.getElementById('audio-meta-area').style.display = "flex"; document.getElementById('audio-file-name').textContent = tempAudioName || "Audio lié"; }
             else { document.getElementById('audio-meta-area').style.display = "none"; }
-            if(tempVideoBase64) { document.getElementById('video-meta-area').style.display = "flex"; document.getElementById('video-file-name').textContent = "Vidéo active"; } 
+            if (tempVideoBase64) { document.getElementById('video-meta-area').style.display = "flex"; document.getElementById('video-file-name').textContent = "Vidéo active"; }
             else { document.getElementById('video-meta-area').style.display = "none"; }
         }
 
@@ -296,17 +290,20 @@ window.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('btn-clear-video').addEventListener('click', () => { tempVideoBase64 = null; updateMediaMetaDOM(); });
 
         function initDragAndDrop(zoneId, inputId, type, callback) {
-            const zone = document.getElementById(zoneId); const input = document.getElementById(inputId);
+            const zone = document.getElementById(zoneId);
+            const input = document.getElementById(inputId);
             zone.addEventListener('click', () => input.click());
             zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('dragover'); });
             zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
-            zone.addEventListener('drop', (e) => { e.preventDefault(); zone.classList.remove('dragover'); if(e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0], type, callback); });
-            input.addEventListener('change', (e) => { if(e.target.files.length > 0) handleFile(e.target.files[0], type, callback); });
+            zone.addEventListener('drop', (e) => { e.preventDefault(); zone.classList.remove('dragover'); if (e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0], type, callback); });
+            input.addEventListener('change', (e) => { if (e.target.files.length > 0) handleFile(e.target.files[0], type, callback); });
         }
 
         function handleFile(file, type, callback) {
-            if((type === 'audio' && !file.type.includes('audio')) || (type === 'video' && !file.type.includes('video'))) return;
-            const reader = new FileReader(); reader.onload = (e) => callback(e.target.result, file.name); reader.readAsDataURL(file);
+            if ((type === 'audio' && !file.type.includes('audio')) || (type === 'video' && !file.type.includes('video'))) return;
+            const reader = new FileReader();
+            reader.onload = (e) => callback(e.target.result, file.name);
+            reader.readAsDataURL(file);
         }
 
         initDragAndDrop('audio-drop-zone', 'audio-file-input', 'audio', (base64, name) => { tempAudioBase64 = base64; tempAudioName = name; updateMediaMetaDOM(); });
@@ -322,13 +319,21 @@ window.addEventListener('DOMContentLoaded', async () => {
                 roblox: document.getElementById('social-roblox').value.trim()
             };
             const updatedBlur = parseInt(document.getElementById('slider-blur').value);
-            const { error } = await supabase.from('user_profiles').update({
+            const { error } = await supabaseClient.from('user_profiles').update({
                 bio: updatedBio, socials: socialsObj, audio_data: tempAudioBase64, audio_name: tempAudioName, video_data: tempVideoBase64, video_blur: updatedBlur
             }).eq('id', myId);
-            if(!error) {
-                profileData.bio = updatedBio; profileData.socials = socialsObj; profileData.audio_data = tempAudioBase64; profileData.audio_name = tempAudioName; profileData.video_data = tempVideoBase64; profileData.video_blur = updatedBlur;
-                modal.style.display = "none"; displayProfile();
-            } else { alert("Erreur : " + error.message); }
+            if (!error) {
+                profileData.bio = updatedBio;
+                profileData.socials = socialsObj;
+                profileData.audio_data = tempAudioBase64;
+                profileData.audio_name = tempAudioName;
+                profileData.video_data = tempVideoBase64;
+                profileData.video_blur = updatedBlur;
+                modal.style.display = "none";
+                displayProfile();
+            } else {
+                alert("Erreur : " + error.message);
+            }
         });
     </script>
 </body>
